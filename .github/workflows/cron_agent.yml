@@ -1,0 +1,39 @@
+name: AI News Agent Scheduler
+
+on:
+  schedule:
+    # Server GitHub pakai waktu standar dunia (UTC). 
+    # Jam 4 Sore WIB = 09:00 UTC, dan Jam 4 Pagi WIB = 21:00 UTC
+    - cron: '0 9,21 * * *'
+  workflow_dispatch: # Tombol rahasia buat lu mancing jalanin manual kapan aja
+
+permissions:
+  contents: write
+
+jobs:
+  run-agent:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ambil Source Code dari Repo
+        uses: actions/checkout@v3
+
+      - name: Setup Python di Server Cloud
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install Library Alat Tempur
+        run: pip install google-generativeai feedparser
+
+      - name: Jalankan Robot AI Agent
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python auto_agent.py
+
+      - name: Commit dan Push Hasil Web Terbaru
+        run: |
+          git config --global user.name "GitHub Robot"
+          git config --global user.email "actions@github.com"
+          git add arsip_berita.json arsip_berita.html || true
+          git commit -m "Update arsip berita otomatis oleh AI Agent" || true
+          git push || true
