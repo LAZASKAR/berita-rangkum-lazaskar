@@ -38,7 +38,7 @@ def perbarui_halaman_web(data):
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>AI News Agent Logbook</title>
+        <title>Intelijen Berita: Makro, Geopolitik & Tech</title>
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -87,7 +87,7 @@ def perbarui_halaman_web(data):
             .jam-badge { display: inline-flex; align-items: center; background: var(--badge-bg); color: var(--badge-text); padding: 5px 12px; border-radius: 30px; font-size: 0.8rem; font-weight: 600; margin-bottom: 15px; }
             
             .konten-text { font-size: 0.95rem; }
-            .konten-text h3 { margin-top: 15px; margin-bottom: 8px; font-size: 1.1rem; color: var(--text); }
+            .konten-text h3 { margin-top: 15px; margin-bottom: 8px; font-size: 1.1rem; color: var(--text); border-bottom: 1px dashed var(--border); padding-bottom: 5px; }
             .konten-text h3:first-child { margin-top: 0; }
             .konten-text ul { margin-top: 0; padding-left: 20px; color: var(--muted); }
             .konten-text li { margin-bottom: 6px; }
@@ -97,8 +97,8 @@ def perbarui_halaman_web(data):
     <body>
         <div class="container">
             <header>
-                <h1>📰 Logbook AI News</h1>
-                <p class="subtitle">Arsip rangkuman berita otomatis harian Anda</p>
+                <h1>🌐 Intelijen Makro & Tech</h1>
+                <p class="subtitle">Geopolitik, Ekonomi, Kripto, & AI</p>
             </header>
     """
     
@@ -148,24 +148,56 @@ def perbarui_halaman_web(data):
     with open(FILE_HTML, "w", encoding="utf-8") as f:
         f.write(html_awal + html_isi + html_akhir)
 
+def ambil_berita_topik(kata_kunci, jumlah=3):
+    """Fungsi pembantu untuk mengambil berita spesifik dari Google News berdasarkan kata kunci"""
+    url = f"https://news.google.com/rss/search?q={kata_kunci}&hl=id&gl=ID&ceid=ID:id"
+    try:
+        feed = feedparser.parse(url)
+        return [f"- {entry.title}" for entry in feed.entries[:jumlah]]
+    except Exception as e:
+        print(f"Gagal mengambil berita untuk {kata_kunci}: {e}")
+        return []
+
 def tugas_merangkum():
     sekarang = datetime.datetime.now()
     str_bulan = f"{NAMA_BULAN[sekarang.month]} {sekarang.year}"
     str_hari = f"{NAMA_HARI[sekarang.weekday()]}, {sekarang.day} {NAMA_BULAN[sekarang.month]} {sekarang.year}"
     str_jam = sekarang.strftime("%H:00 WIB")
     
+    print(f"🤖 Mulai mengumpulkan intelijen pasar pada {str_jam}...")
+    
     try:
-        url_berita = "https://news.google.com/rss?hl=id&gl=ID&ceid=ID:id"
-        feed = feedparser.parse(url_berita)
-        daftar_berita = [f"- {entry.title}" for entry in feed.entries[:10]]
-        konteks_berita = "\n".join(daftar_berita)
+        # KITA SURUH ROBOT MENCARI DI 4 TOPIK BERBEDA
+        berita_geopolitik = ambil_berita_topik("geopolitik internasional ATAU amerika ATAU china ATAU timur tengah", 5)
+        berita_ekonomi = ambil_berita_topik("ekonomi global ATAU suku bunga the fed ATAU inflasi", 5)
+        berita_kripto = ambil_berita_topik("crypto ATAU bitcoin ATAU ethereum ATAU regulasi kripto", 5)
+        berita_ai = ambil_berita_topik("kecerdasan buatan ATAU artificial intelligence ATAU openai", 5)
         
+        # Gabungkan semua temuan mentah
+        kumpulan_berita_mentah = "=== GEOPOLITIK INTERNASIONAL ===\n" + "\n".join(berita_geopolitik) + "\n\n"
+        kumpulan_berita_mentah += "=== EKONOMI & PASAR INVESTASI ===\n" + "\n".join(berita_ekonomi) + "\n\n"
+        kumpulan_berita_mentah += "=== PASAR KRIPTO ===\n" + "\n".join(berita_kripto) + "\n\n"
+        kumpulan_berita_mentah += "=== TEKNOLOGI AI ===\n" + "\n".join(berita_ai)
+        
+        # Prompt sakti untuk Gemini
         prompt = f"""
-        Buat rangkuman terstruktur dari 10 berita terkini ini:
-        {konteks_berita}
-        Output WAJIB HANYA dalam format tag HTML (Gunakan <h3> untuk nama kategori, dan <ul><li> untuk isi beritanya). Jangan sertakan bungkusan markdown ```html.
-        Gunakan bahasa Indonesia yang santai tapi tetap informatif.
+        Anda adalah seorang analis intelijen pasar dan teknologi senior. 
+        Tugas Anda adalah merangkum intisari dari kumpulan judul berita mentah berikut:
+        
+        {kumpulan_berita_mentah}
+        
+        TUGAS PENTING:
+        1. Buatkan rangkuman tajam, analitis, dan berbobot (seperti laporan eksekutif).
+        2. WAJIB menggunakan 4 kategori utama ini secara berurutan menggunakan tag <h3>:
+           <h3>🌍 Geopolitik Internasional</h3>
+           <h3>📈 Ekonomi & Investasi</h3>
+           <h3>🪙 Pasar Kripto</h3>
+           <h3>🤖 Perkembangan AI</h3>
+        3. Di bawah setiap tag <h3>, berikan poin-poin ringkasan menggunakan tag <ul><li>.
+        4. Jangan sertakan bungkusan markdown seperti ```html. Langsung berikan tag elemennya.
+        5. Buat kalimat yang lugas dan mudah dicerna investor/tech-enthusiast.
         """
+        
         respon = model.generate_content(prompt)
         teks_html_berita = respon.text.replace("```html", "").replace("```", "").strip()
         
@@ -176,7 +208,7 @@ def tugas_merangkum():
         
         simpan_database(db)
         perbarui_halaman_web(db)
-        print("✅ Sukses memperbarui database dan tampilan UI web!")
+        print("✅ Sukses mengumpulkan dan merangkum intelijen makro!")
     except Exception as e:
         print(f"❌ Gagal mengeksekusi rangkuman: {e}")
 
